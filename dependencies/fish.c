@@ -31,7 +31,7 @@ Simulation init_simulation(int fish_count, int screen_long, int screen_haut, flo
 int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float rmin, float rmax){
     int nb = 0
     for (int i = 0; i<fish_count, i ++){
-        if((norm_V2(subs_V2(population[i]->VecPosition,f->VecPosition))<=rmax)&& ((norm_V2(subs_V2(population[i]->VecPosition,f->VecPosition))>rmin))){
+        if((norm_V2(&subs_V2(population[i]->VecPosition,f->VecPosition))<=rmax)&& ((norm_V2(&subs_V2(population[i]->VecPosition,f->VecPosition))>rmin))){
             nb++;
         }
     }
@@ -42,7 +42,7 @@ int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float r
 Fish * neighbours (int neighbour_count,const Fish * population, const Fish *f, int fish_count, float rmin, float rmax){
     Fish * tab = malloc(neighbour_count*sizeof(Fish));
     for (int i = 0 ;i<neighbour_count;i++){
-    if((norm_V2(subs_V2(population[i]->VecPosition,f->VecPosition))<=rmax)&& ((norm_V2(subs_V2(population[i]->VecPosition,f->VecPosition))>rmin))){
+    if((norm_V2(&subs_V2(population[i]->VecPosition,f->VecPosition))<=rmax)&& ((norm_V2(&subs_V2(population[i]->VecPosition,f->VecPosition))>rmin))){
         tab[i] = population[i];
     }
     }
@@ -51,11 +51,11 @@ Fish * neighbours (int neighbour_count,const Fish * population, const Fish *f, i
 
 
 Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_repulsion){
-    n_Repulsion = nb_fish_zone(population,f,fish_count,0,r_repulsion);
+    n_Repulsion = nb_fish_zone(population,f,fish_count,0.0,r_repulsion);
     Fish * neighbour_rep= neighbours (n_Repulsion,population,f,fish_count,0,r_repulsion);
     Vec2 repulsion_vector = init_V2(0.0,0.0);
     for (int i = 0; i<n_Repulsion; i++){
-        repulsion_vector = repulsion_vector + divide_V2(subs_V2(population[i]->VecPosition,f->VecPosition),norm_V2(subs_V2(population[i]->VecPosition,f->VecPosition)));
+        repulsion_vector = add_V2(repulsion_vector, divide_V2(subs_V2(neighbour_rep[i]->VecPosition,f->VecPosition),norm_V2(&subs_V2(neighbour_rep[i]->VecPosition,f->VecPosition))));
     }
     return mutl_v2(repulsion_vector,-1.0);
 }
@@ -65,18 +65,24 @@ Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_re
 
 Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_alignment, float r_repulsion){       //alignement est appelé orientation dans la these de gautrais
     int n_Alignment=nb_fish_zone(population,f,fish_count,r_repulsion,r_alignment);
-    Fish* neighbours_Alignment=neighbours(nAlignment,population,f,fish_count,r_repulsion,r_alignment);
+    Fish* neighbours_Alignment=neighbours(n_Alignment,population,f,fish_count,r_repulsion,r_alignment);
+
     Vec2 alignment_vector=init_V2(0.0,0.0);
     for (int i=0,i<n_Alignment,i++){
-        alignment_vector=
+        alignment_vector=add_V2(alignement_vector, neighbours_Alignment[i]->VecVitesse);
     }
-};
+}
 
 
 
 
-Vec2 attraction(const Fish* f, const Fish* population, int fish_count, float r_attraction)
-{
-    
-};
+Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_alignment, float r_attraction){
+    n_Attraction = nb_fish_zone(population,f,fish_count,r_alignment,r_attraction);
+    Fish * neighbour_Attraction= neighbours(n_Attraction,population,f,fish_count,r_alignment,r_attraction);
+    Vec2 attraction_vector = init_V2(0.0,0.0);
+    for (int i = 0; i<n_Attraction; i++){
+        attraction_vector = add_V2(attraction_vector, divide_V2(subs_V2(neighbour_Attraction[i]->VecPosition,f->VecPosition),norm_V2(&subs_V2(neighbour_Attraction[i]->VecPosition,f->VecPosition))));
+    }
+    return mutl_v2(attraction_vector,-1.0);
+}
 
