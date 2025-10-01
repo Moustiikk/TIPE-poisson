@@ -71,6 +71,7 @@ Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_al
     for (int i=0,i<n_Alignment,i++){
         alignment_vector=add_V2(alignement_vector, neighbours_Alignment[i]->VecVitesse);
     }
+    return alignement_vector
 }
 
 
@@ -83,6 +84,6 @@ Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_al
     for (int i = 0; i<n_Attraction; i++){
         attraction_vector = add_V2(attraction_vector, divide_V2(subs_V2(neighbour_Attraction[i]->VecPosition,f->VecPosition),norm_V2(&subs_V2(neighbour_Attraction[i]->VecPosition,f->VecPosition))));
     }
-    return mutl_v2(attraction_vector,-1.0);
+    return attraction_vector;
 }
 
