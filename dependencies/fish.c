@@ -70,7 +70,7 @@ Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_re
 
 
 
-Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_alignment, float r_repulsion){       //alignement est appelé orientation dans la these de gautrais
+Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_repulsion, float r_alignment){       //alignement est appelé orientation dans la these de gautrais
     int n_Alignment = nb_fish_zone(population, f, fish_count, r_repulsion, r_alignment);
     Fish* neighbours_Alignment = neighbours(n_Alignment, population, f, fish_count, r_repulsion, r_alignment);
 
@@ -151,23 +151,23 @@ Vec2 reflect(Vec2 v, Vec2 normale) {
 void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
 
     if (position->x < 0.0f) {
-        position->x = 0.0f;
+        position->x = 2.0f;
         *vitesse = reflect(*vitesse, (Vec2){1.0f, 0.0f}); 
     }
 
     else if (position->x > screen_long) {
-        position->x = (float)screen_long;
+        position->x = (float)screen_long-2.0;
         *vitesse = reflect(*vitesse, (Vec2){-1.0f, 0.0f}); 
     }
 
   
     if (position->y < 0.0f) {
-        position->y = 0.0f;
+        position->y = 2.0f;
         *vitesse = reflect(*vitesse, (Vec2){0.0f, 1.0f}); 
     }
     
     else if (position->y > screen_haut) {
-        position->y = (float)screen_haut;
+        position->y = (float)screen_haut-2;
         *vitesse = reflect(*vitesse, (Vec2){0.0f, -1.0f}); 
     }
 }
