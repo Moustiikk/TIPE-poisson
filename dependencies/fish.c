@@ -44,11 +44,13 @@ int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float r
 
 Fish* neighbours (int neighbour_count,const Fish * population,const Fish *f, int fish_count, float rmin, float rmax){
     Fish * tab = malloc(neighbour_count * sizeof(Fish));
-    for (int i = 0; i < neighbour_count; i++){
+    int j=0;
+    for (int i = 0; i < fish_count; i++){
         Vec2 diff = subs_V2(population[i].VecPosition, f->VecPosition);
         float d = norm_V2(&diff);
         if ((d <= rmax) && (d > rmin)){
-            tab[i] = population[i];
+            tab[j] = population[i];
+            j++;
         }
     }
     return tab;
@@ -116,10 +118,20 @@ Vec2 direction_vec (Fish* f, const Fish* population, int fish_count,
 
 float turning_angle (Vec2 D,Vec2 V,float k, float speed){
     float phi_max = k * speed;
-    if (norm_V2(D)==0.0 || norm_V2(V)==0.0){
+    if (norm_V2(&D)==0.0 || norm_V2(&V)==0.0){
         return 0.0f;
     }
-    float delta_phi=clamp01m1(prod_V2(D, V) / (norm_V2(&D) * norm_V2(&V)));
+    
+    float delta_phi=prod_V2(D, V) / (norm_V2(&D) * norm_V2(&V));
+
+
+    if (delta_phi > 1.0f){
+        delta_phi=1.0f;
+    }
+    if (delta_phi < -1.0f){
+        delta_phi=-1.0f;
+    }
+
     delta_phi = acosf(delta_phi);
     float sign;
     if (V.x*D.y - D.x*V.y > 0.0f){

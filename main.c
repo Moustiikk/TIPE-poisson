@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 1920, H = 1080;
+    const int W = 900, H = 900;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -35,29 +35,32 @@ int main(void) {
     }
 
     /* ---- Simulation ---- */
-    float body_length = 15.0f;
-    Simulation sim = init_simulation(200, W, H, 3.0f, body_length);
-    sim.r_repulsion  = 5.0f  * body_length;
-    sim.r_alignment  = 20.0f * body_length;
-    sim.r_attraction = 40.0f * body_length;
+    float body_length = 6.0f;
+    Simulation sim = init_simulation(600, W, H, 3.0f, body_length);
+    sim.r_repulsion  = 1.0f  * body_length;
+    sim.r_alignment  = 10.0f * body_length;
+    sim.r_attraction = 20.0f * body_length;
 
     bool running = true;
-    uint32_t last_ticks = SDL_GetTicks();
-
     while (running) {
         SDL_Event evt;
         while (SDL_PollEvent(&evt)) {
-            if (evt.type == SDL_EVENT_QUIT) running = false;
+            if (evt.type == SDL_EVENT_QUIT){
+                running = false;
+            }
+            else if (evt.type== SDL_EVENT_KEY_DOWN){
+
+                if (evt.key.key == SDLK_Q) {
+                running = false;
+                }
+            }
         }
 
-        uint32_t now = SDL_GetTicks();
-        float delta_time = (now - last_ticks) / 1000.0f;
-        last_ticks = now;
 
         for (int i = 0; i < sim.fish_count; ++i) {
             update_fish(&sim.population[i], sim.population, sim.fish_count,
                         sim.r_repulsion, sim.r_alignment, sim.r_attraction,
-                        sim.speed, sim.screen_long, sim.screen_haut, 0.23 * body_length);
+                        sim.speed, sim.screen_long, sim.screen_haut, 0.15/body_length);
         }
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);

@@ -29,7 +29,7 @@ float prod_V2(Vec2 a, Vec2 b) {
 
 Vec2 divide_V2(Vec2 a, float scalaire) {
     if (scalaire==0){
-        return a
+        return a;
     }
     else{
         float inv_scalaire=1/scalaire;
@@ -38,7 +38,7 @@ Vec2 divide_V2(Vec2 a, float scalaire) {
 }
 
 Vec2 normalize_V2(Vec2 a){
-    return divide_V2(a,norm_V2(&a);)
+    return divide_V2(a,norm_V2(&a));
 }
 
 
@@ -56,7 +56,7 @@ Vec2 mean_V2(const Vec2* vecList, int n) {
 }
 
 
-float norm_V2(const Vec2* a) {
+float norm_V2(Vec2* a) {
     return sqrtf(a->x * a->x + a->y * a->y);
 }
 
