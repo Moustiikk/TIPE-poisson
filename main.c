@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 3072, H = 1920;
+    const int W = 1920, H = 1080;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {

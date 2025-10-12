@@ -64,6 +64,7 @@ Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_re
         float d = norm_V2(&diff);
         repulsion_vector = add_V2(repulsion_vector, divide_V2(diff, d));
     }
+    free(neighbour_rep);
     return mult_V2(repulsion_vector, -1.0f);
 }
 

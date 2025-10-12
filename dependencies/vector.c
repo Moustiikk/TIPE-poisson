@@ -28,8 +28,17 @@ float prod_V2(Vec2 a, Vec2 b) {
 }
 
 Vec2 divide_V2(Vec2 a, float scalaire) {
-    float inv_scalaire=1/scalaire;
-    return init_V2(a.x * inv_scalaire, a.y * inv_scalaire);
+    if (scalaire==0){
+        return a
+    }
+    else{
+        float inv_scalaire=1/scalaire;
+        return init_V2(a.x * inv_scalaire, a.y * inv_scalaire);
+    }
+}
+
+Vec2 normalize_V2(Vec2 a){
+    return divide_V2(a,norm_V2(a);)
 }
 
 
