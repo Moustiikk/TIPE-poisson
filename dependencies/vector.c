@@ -38,7 +38,7 @@ Vec2 divide_V2(Vec2 a, float scalaire) {
 }
 
 Vec2 normalize_V2(Vec2 a){
-    return divide_V2(a,norm_V2(a);)
+    return divide_V2(a,norm_V2(&a);)
 }
 
 

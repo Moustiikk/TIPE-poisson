@@ -61,11 +61,10 @@ Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_re
     Vec2 repulsion_vector = init_V2(0.0f, 0.0f);
     for (int i = 0; i < n_Repulsion; i++){
         Vec2 diff = subs_V2(neighbour_rep[i].VecPosition, f->VecPosition);
-        float d = norm_V2(&diff);
-        repulsion_vector = add_V2(repulsion_vector, divide_V2(diff, d));
+        repulsion_vector = add_V2(repulsion_vector, normalize_V2(diff));
     }
     free(neighbour_rep);
-    return mult_V2(repulsion_vector, -1.0f);
+    return mult_V2(normalize_V2(repulsion_vector), -1.0f);
 }
 
 
@@ -79,9 +78,8 @@ Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_re
     for (int i = 0; i < n_Alignment; i++){
         alignment_vector = add_V2(alignment_vector, neighbours_Alignment[i].VecVitesse);
     }
-
-    alignment_vector=divide_V2(alignment_vector,norm_V2(&alignment_vector));
-    return alignment_vector;
+    free(neighbours_Alignment);
+    return normalize_V2(alignment_vector);
 }
 
 
@@ -91,16 +89,19 @@ Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_al
     int n_Attraction = nb_fish_zone(population, f, fish_count, r_alignment, r_attraction);
     Fish * neighbour_Attraction = neighbours(n_Attraction, population, f, fish_count, r_alignment, r_attraction);
     Vec2 attraction_vector = init_V2(0.0f, 0.0f);
+
     for (int i = 0; i < n_Attraction; i++){
         Vec2 diff = subs_V2(neighbour_Attraction[i].VecPosition, f->VecPosition);
         float d = norm_V2(&diff);
         attraction_vector = add_V2(attraction_vector, divide_V2(diff, d));
     }
+    free(neighbour_Attraction);
     return attraction_vector;
 }
 
 Vec2 direction_vec (Fish* f, const Fish* population, int fish_count,
                  float r_repulsion, float r_alignment, float r_attraction){
+
     Vec2 direction_vector = init_V2(0.0f, 0.0f);
     if (nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion) != 0){
         direction_vector = repulsion(f, population, fish_count, r_repulsion);
@@ -109,13 +110,17 @@ Vec2 direction_vec (Fish* f, const Fish* population, int fish_count,
         direction_vector = add_V2(alignment(f, population, fish_count, r_repulsion, r_alignment),
                                   attraction(f, population, fish_count, r_alignment, r_attraction));
     }
-    return direction_vector;
+    return normalize_V2(direction_vector);
 
 }
 
 float turning_angle (Vec2 D,Vec2 V,float k, float speed){
     float phi_max = k * speed;
-    float delta_phi = acosf( prod_V2(D, V) / (norm_V2(&D) * norm_V2(&V)) );
+    if (norm_V2(D)==0.0 || norm_V2(V)==0.0){
+        return 0.0f;
+    }
+    float delta_phi=clamp01m1(prod_V2(D, V) / (norm_V2(&D) * norm_V2(&V)));
+    delta_phi = acosf(delta_phi);
     float sign;
     if (V.x*D.y - D.x*V.y > 0.0f){
         sign = 1.0f;
@@ -134,8 +139,7 @@ Vec2 update_vi (Vec2 D,Vec2 V,float k, float speed){
     float angle = turning_angle(D, V, k, speed);
     Vec2 vi_tplus1 = (Vec2){ V.x * cosf(angle) - V.y * sinf(angle),
                              V.x * sinf(angle) + V.y * cosf(angle) }; // calcul matriciel Vi_tplus1 = matrice rotation * Vi
-    vi_tplus1 = mult_V2(vi_tplus1, 1.0f / norm_V2(&vi_tplus1));
-    return vi_tplus1;
+    return normalize_V2(vi_tplus1);
 
 }
 
@@ -177,8 +181,8 @@ void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_ha
 void update_fish(Fish* f, const Fish* population, int fish_count,
                  float r_repulsion, float r_alignment, float r_attraction,
                  float speed, int screen_long, int screen_haut, float k){
-    Vec2 vitesse_tplus1 = update_vi(direction_vec(f, population, fish_count, r_repulsion, r_alignment, r_attraction),
-                                    f->VecVitesse, k, speed);
+    Vec2 D=direction_vec(f, population, fish_count, r_repulsion, r_alignment, r_attraction);
+    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, k, speed);
     f->VecVitesse = vitesse_tplus1;
     f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, speed));
     repositioning(&f->VecPosition, &f->VecVitesse, screen_long, screen_haut);
