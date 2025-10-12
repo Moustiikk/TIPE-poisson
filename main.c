@@ -41,6 +41,7 @@ int main(void) {
     sim.r_alignment  = 10.0f * body_length;
     sim.r_attraction = 20.0f * body_length;
 
+    bool is_skipping=false;
     bool running = true;
     while (running) {
         SDL_Event evt;
@@ -52,6 +53,12 @@ int main(void) {
 
                 if (evt.key.key == SDLK_Q) {
                 running = false;
+                }
+                if (evt.key.key == SDLK_S && is_skipping) {
+                is_skipping = false;
+                }
+                else if (evt.key.key == SDLK_S) {
+                is_skipping = true;
                 }
             }
         }
@@ -78,7 +85,13 @@ int main(void) {
         }
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(16);
+        if (is_skipping){
+            SDL_Delay(0.0000);
+        }
+        else{
+            SDL_Delay(16);
+        }
+        
     }
 
     free(sim.population);
