@@ -30,12 +30,13 @@ Simulation init_simulation(int fish_count, int screen_long, int screen_haut, flo
 }
 
 
-int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float rmin, float rmax){
+int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float rmin, float rmax,float blind_zone){
     int nb = 0;
     for (int i = 0; i < fish_count; i++){
-        Vec2 diff = subs_V2(population[i].VecPosition, f->VecPosition);
-        float d = norm_V2(&diff);
-        if ((d <= rmax) && (d > rmin)) {
+        Vec2 rij = subs_V2(population[i].VecPosition, f->VecPosition);
+        float d = norm_V2(&rij);
+        float theta = angle_V2(f->VecVitesse, rij);
+        if ((d <= rmax) && (d > rmin)&& theta<blind_zone) {
             nb++;
         }
     }
@@ -43,13 +44,14 @@ int nb_fish_zone(const Fish * population, const Fish *f, int fish_count, float r
 }
 
 
-Fish* neighbours (int neighbour_count,const Fish * population,const Fish *f, int fish_count, float rmin, float rmax){
+Fish* neighbours (int neighbour_count,const Fish * population,const Fish *f, int fish_count, float rmin, float rmax,float blind_zone){
     Fish * tab = malloc(neighbour_count * sizeof(Fish));
     int j=0;
     for (int i = 0; i < fish_count; i++){
-        Vec2 diff = subs_V2(population[i].VecPosition, f->VecPosition);
-        float d = norm_V2(&diff);
-        if ((d <= rmax) && (d > rmin)){
+        Vec2 rij = subs_V2(population[i].VecPosition, f->VecPosition);
+        float d = norm_V2(&rij);
+        float theta = angle_V2(f->VecVitesse, rij);
+        if ((d <= rmax) && (d > rmin)&& (theta < blind_zone)){
             tab[j] = population[i];
             j++;
         }
@@ -58,9 +60,9 @@ Fish* neighbours (int neighbour_count,const Fish * population,const Fish *f, int
 }
 
 
-Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_repulsion){
-    int n_Repulsion = nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion);
-    Fish * neighbour_rep = neighbours(n_Repulsion, population, f, fish_count, 0.0f, r_repulsion);
+Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_repulsion,float blind_zone){
+    int n_Repulsion = nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion,blind_zone);
+    Fish * neighbour_rep = neighbours(n_Repulsion, population, f, fish_count, 0.0f, r_repulsion,blind_zone);
     Vec2 repulsion_vector = init_V2(0.0f, 0.0f);
     for (int i = 0; i < n_Repulsion; i++){
         Vec2 diff = subs_V2(neighbour_rep[i].VecPosition, f->VecPosition);
@@ -73,9 +75,9 @@ Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_re
 
 
 
-Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_repulsion, float r_alignment){       //alignement est appelé orientation dans la these de gautrais
-    int n_Alignment = nb_fish_zone(population, f, fish_count, r_repulsion, r_alignment);
-    Fish* neighbours_Alignment = neighbours(n_Alignment, population, f, fish_count, r_repulsion, r_alignment);
+Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_repulsion, float r_alignment,float blind_zone){       //alignement est appelé orientation dans la these de gautrais
+    int n_Alignment = nb_fish_zone(population, f, fish_count, r_repulsion, r_alignment,blind_zone);
+    Fish* neighbours_Alignment = neighbours(n_Alignment, population, f, fish_count, r_repulsion, r_alignment,blind_zone);
 
     Vec2 alignment_vector = init_V2(0.0f, 0.0f);
     for (int i = 0; i < n_Alignment; i++){
@@ -88,9 +90,9 @@ Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_re
 
 
 
-Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_alignment, float r_attraction){
-    int n_Attraction = nb_fish_zone(population, f, fish_count, r_alignment, r_attraction);
-    Fish * neighbour_Attraction = neighbours(n_Attraction, population, f, fish_count, r_alignment, r_attraction);
+Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_alignment, float r_attraction,float blind_zone){
+    int n_Attraction = nb_fish_zone(population, f, fish_count, r_alignment, r_attraction,blind_zone);
+    Fish * neighbour_Attraction = neighbours(n_Attraction, population, f, fish_count, r_alignment, r_attraction,blind_zone);
     Vec2 attraction_vector = init_V2(0.0f, 0.0f);
 
     for (int i = 0; i < n_Attraction; i++){
@@ -103,15 +105,15 @@ Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_al
 }
 
 Vec2 direction_vec (Fish* f, const Fish* population, int fish_count,
-                 float r_repulsion, float r_alignment, float r_attraction){
+                 float r_repulsion, float r_alignment, float r_attraction,float blind_zone){
 
     Vec2 direction_vector = init_V2(0.0f, 0.0f);
-    if (nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion) != 0){
-        direction_vector = repulsion(f, population, fish_count, r_repulsion);
+    if (nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion,blind_zone) != 0){
+        direction_vector = repulsion(f, population, fish_count, r_repulsion,blind_zone);
     }
     else{
-        direction_vector = add_V2(alignment(f, population, fish_count, r_repulsion, r_alignment),
-                                  attraction(f, population, fish_count, r_alignment, r_attraction));
+        direction_vector = add_V2(alignment(f, population, fish_count, r_repulsion, r_alignment,blind_zone),
+                                  attraction(f, population, fish_count, r_alignment, r_attraction,blind_zone));
     }
     return normalize_V2(direction_vector);
 
@@ -123,17 +125,9 @@ float turning_angle (Vec2 D,Vec2 V,float k, float speed){
         return 0.0f;
     }
     
-    float delta_phi=prod_V2(D, V) / (norm_V2(&D) * norm_V2(&V));
+    
 
-
-    if (delta_phi > 1.0f){
-        delta_phi=1.0f;
-    }
-    if (delta_phi < -1.0f){
-        delta_phi=-1.0f;
-    }
-
-    delta_phi = acosf(delta_phi);
+    float delta_phi = angle_V2(D,V);
     float sign;
     if (V.x*D.y - D.x*V.y > 0.0f){
         sign = 1.0f;
@@ -192,9 +186,9 @@ void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_ha
 
 
 void update_fish(int i, Simulation* sim, float curvature){
-    f=sim->population[i];
-    Vec2 D=direction_vec(f, sim->population, sim->fish_count, sim->r_repulsion, sim->r_alignment, sim->r_attraction);
-    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, curvature, sim->speed);
+    Fish* f=&sim->population[i];
+    Vec2 D=direction_vec(f, sim->population, sim->fish_count, sim->r_repulsion, sim->r_alignment, sim->r_attraction,sim->blind_zone); // nouveau vecteur vitesse 
+    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, curvature, sim->speed); // vecteur vitesse t+1 max selon la curvature
     f->VecVitesse = vitesse_tplus1;
     f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, sim->speed));
     repositioning(&f->VecPosition, &f->VecVitesse, sim->screen_long, sim->screen_haut);

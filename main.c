@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 3072, H = 1920;
+    const int W = 1800, H = 1800;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -35,18 +35,19 @@ int main(void) {
     }
 
     /* ---- Simulation ---- */
-    float body_length = 12.0f;
-    float curvature = 0.13/body_length;
-    float r_repulsion = 1.0f  * body_length;
-    float r_alignment  = 10.0f * body_length;
-    float r_attraction = 20.0f * body_length;
+    float body_length = 15.0f;
+    float curvature = 0.28/body_length; // angle max pour lequel le poisson peut tourner
+    float r_repulsion = 1.2f  * body_length;
+    float r_alignment  = 3.5f * body_length;
+    float r_attraction = 22.0f * body_length;
+    float blind_zone=150.0*(M_PI/180);
 
-    float velocity= 3.0f;
+    float velocity= 2.0*60/body_length;
 
-    int nb_fish= 4;
+    int nb_fish= 250;
 
 
-    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length);
+    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, blind_zone);
     sim.r_repulsion  = r_repulsion;
     sim.r_alignment  = r_alignment;
     sim.r_attraction = r_attraction;
@@ -81,9 +82,9 @@ int main(void) {
                 }
                 else if (evt.key.key == SDLK_A) {
                     is_alone = true;
-                    sim.r_repulsion = 70.0+r_repulsion;
-                    sim.r_alignment  = 70.0+r_alignment;
-                    sim.r_attraction = 70.0+r_attraction;
+                    sim.r_repulsion = 700.0+r_repulsion;
+                    sim.r_alignment  = 700.0+r_alignment;
+                    sim.r_attraction = 700.0+r_attraction;
                 }
                 if (evt.key.key == SDLK_T && is_alone) {
                     is_together = false;
@@ -102,7 +103,7 @@ int main(void) {
 
 
         for (int i = 0; i < sim.fish_count; ++i) {
-            update_fish(&sim, curvature);
+            update_fish(i, &sim, curvature);
         }
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);
