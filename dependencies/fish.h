@@ -14,6 +14,7 @@ typedef struct {
     int screen_long;
     int screen_haut;
     float speed;    // Tjr constante
+    float blind_zone;
     float body_length;
     float r_alignment;
     float r_attraction;

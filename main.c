@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 900, H = 900;
+    const int W = 3072, H = 1920;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -35,7 +35,7 @@ int main(void) {
     }
 
     /* ---- Simulation ---- */
-    float body_length = 6.0f;
+    float body_length = 12.0f;
     float curvature = 0.13/body_length;
     float r_repulsion = 1.0f  * body_length;
     float r_alignment  = 10.0f * body_length;
@@ -102,9 +102,7 @@ int main(void) {
 
 
         for (int i = 0; i < sim.fish_count; ++i) {
-            update_fish(&sim.population[i], sim.population, sim.fish_count,
-                        sim.r_repulsion, sim.r_alignment, sim.r_attraction,
-                        sim.speed, sim.screen_long, sim.screen_haut, curvature);
+            update_fish(&sim, curvature);
         }
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);

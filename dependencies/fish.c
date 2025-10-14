@@ -12,13 +12,14 @@ Fish init_fish(float x, float y, float speed) {
 }
 
 
-Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed,float body_length) {
+Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed,float body_length,float blind_zone) {
     Simulation sim;
     sim.fish_count = fish_count;
     sim.screen_long = screen_long;
     sim.screen_haut = screen_haut;
     sim.body_length=body_length;
     sim.speed = speed;
+    sim.blind_zone=blind_zone;
     sim.population = malloc(fish_count * sizeof(Fish));
     for (int i = 0; i < fish_count; i++) {
         float x = (float)(rand() % screen_long);
@@ -190,12 +191,11 @@ void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_ha
 }
 
 
-void update_fish(Fish* f, const Fish* population, int fish_count,
-                 float r_repulsion, float r_alignment, float r_attraction,
-                 float speed, int screen_long, int screen_haut, float k){
-    Vec2 D=direction_vec(f, population, fish_count, r_repulsion, r_alignment, r_attraction);
-    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, k, speed);
+void update_fish(int i, Simulation* sim, float curvature){
+    f=sim->population[i];
+    Vec2 D=direction_vec(f, sim->population, sim->fish_count, sim->r_repulsion, sim->r_alignment, sim->r_attraction);
+    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, curvature, sim->speed);
     f->VecVitesse = vitesse_tplus1;
-    f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, speed));
-    repositioning(&f->VecPosition, &f->VecVitesse, screen_long, screen_haut);
+    f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, sim->speed));
+    repositioning(&f->VecPosition, &f->VecVitesse, sim->screen_long, sim->screen_haut);
 }
