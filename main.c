@@ -36,13 +36,26 @@ int main(void) {
 
     /* ---- Simulation ---- */
     float body_length = 6.0f;
-    Simulation sim = init_simulation(600, W, H, 3.0f, body_length);
-    sim.r_repulsion  = 1.0f  * body_length;
-    sim.r_alignment  = 10.0f * body_length;
-    sim.r_attraction = 20.0f * body_length;
+    float curvature = 0.13/body_length;
+    float r_repulsion = 1.0f  * body_length;
+    float r_alignment  = 10.0f * body_length;
+    float r_attraction = 20.0f * body_length;
 
+    float velocity= 3.0f;
+
+    int nb_fish= 4;
+
+
+    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length);
+    sim.r_repulsion  = r_repulsion;
+    sim.r_alignment  = r_alignment;
+    sim.r_attraction = r_attraction;
+
+    bool is_alone = false;
+    bool is_together = false;
     bool is_skipping=false;
     bool running = true;
+
     while (running) {
         SDL_Event evt;
         while (SDL_PollEvent(&evt)) {
@@ -52,13 +65,37 @@ int main(void) {
             else if (evt.type== SDL_EVENT_KEY_DOWN){
 
                 if (evt.key.key == SDLK_Q) {
-                running = false;
+                    running = false;
                 }
                 if (evt.key.key == SDLK_S && is_skipping) {
-                is_skipping = false;
+                    is_skipping = false;
                 }
                 else if (evt.key.key == SDLK_S) {
-                is_skipping = true;
+                    is_skipping = true;
+                }
+                if (evt.key.key == SDLK_A && is_alone) {
+                    is_alone = false;
+                    sim.r_repulsion = r_repulsion;
+                    sim.r_alignment  = r_alignment;
+                    sim.r_attraction = r_attraction;
+                }
+                else if (evt.key.key == SDLK_A) {
+                    is_alone = true;
+                    sim.r_repulsion = 70.0+r_repulsion;
+                    sim.r_alignment  = 70.0+r_alignment;
+                    sim.r_attraction = 70.0+r_attraction;
+                }
+                if (evt.key.key == SDLK_T && is_alone) {
+                    is_together = false;
+                    sim.r_repulsion = r_repulsion;
+                    sim.r_alignment  = r_alignment;
+                    sim.r_attraction = r_attraction;
+                }
+                else if (evt.key.key == SDLK_T) {
+                    is_together = true;
+                    sim.r_repulsion = r_repulsion;
+                    sim.r_alignment  = r_alignment;
+                    sim.r_attraction = 1000.0+r_attraction;
                 }
             }
         }
@@ -67,7 +104,7 @@ int main(void) {
         for (int i = 0; i < sim.fish_count; ++i) {
             update_fish(&sim.population[i], sim.population, sim.fish_count,
                         sim.r_repulsion, sim.r_alignment, sim.r_attraction,
-                        sim.speed, sim.screen_long, sim.screen_haut, 0.15/body_length);
+                        sim.speed, sim.screen_long, sim.screen_haut, curvature);
         }
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);

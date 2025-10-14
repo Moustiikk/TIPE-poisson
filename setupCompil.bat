@@ -61,5 +61,5 @@ REM copy /Y "%MSYS2%\mingw64\bin\libwinpthread-1.dll" . >nul
 echo.
 echo [OK] Compilation et linkage terminés !
 echo.
-pause
+REM pause
 exit /b 0
