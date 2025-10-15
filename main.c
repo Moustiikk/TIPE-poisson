@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 1800, H = 1800;
+    const int W = 950, H = 950;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -35,19 +35,20 @@ int main(void) {
     }
 
     /* ---- Simulation ---- */
-    float body_length = 15.0f;
-    float curvature = 0.28/body_length; // angle max pour lequel le poisson peut tourner
+    float body_length = 8.0*H/900;
+    float curvature = 0.23/body_length; // angle max pour lequel le poisson peut tourner
     float r_repulsion = 1.2f  * body_length;
-    float r_alignment  = 3.5f * body_length;
-    float r_attraction = 22.0f * body_length;
-    float blind_zone=150.0*(M_PI/180);
+    float r_alignment  = 10.0f * body_length;
+    float r_attraction = 20.0f * body_length;
+    float fov=133.0*(M_PI/180);
+    int traj_size=5;
 
-    float velocity= 2.0*60/body_length;
+    float velocity= 0.8*60/body_length;
 
-    int nb_fish= 250;
+    int nb_fish= 200;
 
 
-    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, blind_zone);
+    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, fov,traj_size);
     sim.r_repulsion  = r_repulsion;
     sim.r_alignment  = r_alignment;
     sim.r_attraction = r_attraction;
@@ -56,6 +57,7 @@ int main(void) {
     bool is_together = false;
     bool is_skipping=false;
     bool running = true;
+    bool is_paused=false;
 
     while (running) {
         SDL_Event evt;
@@ -86,7 +88,7 @@ int main(void) {
                     sim.r_alignment  = 700.0+r_alignment;
                     sim.r_attraction = 700.0+r_attraction;
                 }
-                if (evt.key.key == SDLK_T && is_alone) {
+                if (evt.key.key == SDLK_T && is_together) {
                     is_together = false;
                     sim.r_repulsion = r_repulsion;
                     sim.r_alignment  = r_alignment;
@@ -98,8 +100,25 @@ int main(void) {
                     sim.r_alignment  = r_alignment;
                     sim.r_attraction = 1000.0+r_attraction;
                 }
+                if (evt.key.key == SDLK_P) {
+                    is_paused=true;
+                    while (is_paused) {
+                        SDL_Event evt;
+                        if (SDL_WaitEventTimeout(&evt, -1)) {
+                            if (evt.type == SDL_EVENT_QUIT) {
+                                running = false;
+                                is_paused = false;
+                            } 
+                            else if (evt.type == SDL_EVENT_KEY_DOWN && evt.key.key == SDLK_P) {
+                                is_paused = false; 
+                            }
+                        }
+                    }
+                }
             }
+                
         }
+    
 
 
         for (int i = 0; i < sim.fish_count; ++i) {
@@ -118,6 +137,15 @@ int main(void) {
                 body_length
             };
             SDL_RenderFillRect(renderer, &fish_rect);
+            for (int j=0;j<sim.population[i].traj->filled;j++){
+                SDL_FRect pos_traj ={
+                    sim.population[i].traj->values[j].x - body_length/(6.0f*2.0f),
+                    sim.population[i].traj->values[j].y - body_length/(6.0f*2.0f),
+                    body_length/6.0f,
+                    body_length/6.0f
+                };
+                SDL_RenderFillRect(renderer, &pos_traj);
+            }
         }
 
         SDL_RenderPresent(renderer);
@@ -130,7 +158,7 @@ int main(void) {
         
     }
 
-    free(sim.population);
+    destroy_simulation(&sim);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
