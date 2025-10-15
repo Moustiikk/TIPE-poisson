@@ -24,6 +24,7 @@ typedef struct {
     float fov;
     float body_length;
     int traj_size;
+    bool space;
     float r_alignment;
     float r_attraction;
     float r_repulsion;
@@ -31,7 +32,7 @@ typedef struct {
 
 // Init
 Fish init_fish(float x, float y, float speed,int traj_size);
-Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed, float body_length, float fov,int traj_size);
+Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed, float body_length, float fov,int traj_size,bool space);
 void destroy_simulation(Simulation* sim);
 
 int nb_fish_zone(const Fish* population, const Fish* fish, int fish_count, float rmin, float rmax,float fov);

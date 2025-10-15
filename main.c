@@ -40,15 +40,17 @@ int main(void) {
     float r_repulsion = 1.2f  * body_length;
     float r_alignment  = 10.0f * body_length;
     float r_attraction = 20.0f * body_length;
-    float fov=133.0*(M_PI/180);
-    int traj_size=5;
+    float fov=120.0*(M_PI/180);
+    int traj_size=7;
 
-    float velocity= 0.8*60/body_length;
+    bool space=true; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
+
+    float velocity= 25.0*body_length*(16.0/1000.0);
 
     int nb_fish= 200;
 
 
-    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, fov,traj_size);
+    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, fov,traj_size,space);
     sim.r_repulsion  = r_repulsion;
     sim.r_alignment  = r_alignment;
     sim.r_attraction = r_attraction;
@@ -139,10 +141,10 @@ int main(void) {
             SDL_RenderFillRect(renderer, &fish_rect);
             for (int j=0;j<sim.population[i].traj->filled;j++){
                 SDL_FRect pos_traj ={
-                    sim.population[i].traj->values[j].x - body_length/(6.0f*2.0f),
-                    sim.population[i].traj->values[j].y - body_length/(6.0f*2.0f),
-                    body_length/6.0f,
-                    body_length/6.0f
+                    sim.population[i].traj->values[j].x - body_length/(4.0f*2.0f),
+                    sim.population[i].traj->values[j].y - body_length/(4.0f*2.0f),
+                    body_length/4.0f,
+                    body_length/4.0f
                 };
                 SDL_RenderFillRect(renderer, &pos_traj);
             }

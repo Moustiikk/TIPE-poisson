@@ -62,7 +62,7 @@ float norm_V2(Vec2* a) {
 
 
 float angle_V2(Vec2 a, Vec2 b){
-    float cos_theta=prod_V2(a,b) / norm_V2(&a) * norm_V2(&b);
+    float cos_theta=prod_V2(a,b) /(norm_V2(&a) * norm_V2(&b));
         if (cos_theta > 1.0f){
             cos_theta=1.0f;
         }
@@ -72,6 +72,7 @@ float angle_V2(Vec2 a, Vec2 b){
 
         return acosf(cos_theta);
 }
+
 
 
 

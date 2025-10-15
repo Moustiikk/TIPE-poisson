@@ -20,7 +20,7 @@ Fish init_fish(float x, float y, float speed, int traj_size) {
 }
 
 
-Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed,float body_length,float fov, int traj_size) {
+Simulation init_simulation(int fish_count, int screen_long, int screen_haut, float speed,float body_length,float fov, int traj_size,bool space) {
     Simulation sim;
     sim.fish_count = fish_count;
     sim.screen_long = screen_long;
@@ -29,6 +29,7 @@ Simulation init_simulation(int fish_count, int screen_long, int screen_haut, flo
     sim.speed = speed;
     sim.fov=fov;
     sim.traj_size=traj_size;
+    sim.space=space;
     sim.population = malloc(fish_count * sizeof(Fish));
     for (int i = 0; i < fish_count; i++) {
         float x = (float)(rand() % screen_long);
@@ -148,20 +149,18 @@ float turning_angle (Vec2 D,Vec2 V,float k, float speed){
         return 0.0f;
     }
     
-    
-
     float delta_phi = angle_V2(D,V);
     float sign;
+
     if (V.x*D.y - D.x*V.y > 0.0f){
-        sign = 1.0f;
+        sign =1;  
     }
     else if (V.x*D.y - D.x*V.y < 0.0f){
-        sign = -1.0f;
+        sign =-1;
     }
-    else {
-        return 0.0f;
-    }
-    float delta_phi_eff = sign * fminf(delta_phi, phi_max);
+    else{ sign=0;}
+
+    float delta_phi_eff = sign*fminf(delta_phi, phi_max);
     return delta_phi_eff;
 }
 
@@ -183,7 +182,7 @@ Vec2 reflect(Vec2 v, Vec2 normale) {
 }
 
 
-void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
+void bounded_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
 
     if (position->x < 0.0f) {
         position->x = 2.0f;
@@ -208,13 +207,43 @@ void repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_ha
 }
 
 
+void continious_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
+
+    // Si le poisson sort par la droite, il réapparaît à gauche
+    if (position->x > screen_long) {
+        position->x -= screen_long;
+    }
+    // S’il sort par la gauche, il réapparaît à droite
+    else if (position->x < 0.0f) {
+        position->x += screen_long;
+    }
+
+    // Si le poisson sort par le bas, il réapparaît en haut
+    if (position->y > screen_haut) {
+        position->y -= screen_haut;
+    }
+    // S’il sort par le haut, il réapparaît en bas
+    else if (position->y < 0.0f) {
+        position->y += screen_haut;
+    }
+
+    // Aucun changement de direction : vitesse inchangée
+}
+
+
 void update_fish(int i, Simulation* sim, float curvature){
     Fish* f=&sim->population[i];
     Vec2 D=direction_vec(f, sim->population, sim->fish_count, sim->r_repulsion, sim->r_alignment, sim->r_attraction,sim->fov); // nouveau vecteur vitesse 
     Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, curvature, sim->speed); // vecteur vitesse t+1 max selon la curvature
     f->VecVitesse = vitesse_tplus1;
     f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, sim->speed));
-    repositioning(&f->VecPosition, &f->VecVitesse, sim->screen_long, sim->screen_haut);
+
+    if (sim->space){
+        continious_repositioning(&f->VecPosition, &f->VecVitesse, sim->screen_long, sim->screen_haut);
+    }
+    else {
+        bounded_repositioning(&f->VecPosition, &f->VecVitesse, sim->screen_long, sim->screen_haut);
+    }
 
     if (f->traj->filled<sim->traj_size){
         f->traj->values[f->traj->filled]=f->VecPosition;
