@@ -43,7 +43,7 @@ int main(void) {
     float fov=120.0*(M_PI/180);
     int traj_size=7;
 
-    bool space=true; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
+    bool space=false; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
 
     float velocity= 25.0*body_length*(16.0/1000.0);
 
