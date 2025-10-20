@@ -6,7 +6,7 @@
 typedef struct{
     Vec2* values;
     int filled;
-}Pile;
+}File;
 
 typedef struct {
     Vec2 VecPosition;   

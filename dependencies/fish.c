@@ -9,7 +9,7 @@ Fish init_fish(float x, float y, float speed, int traj_size) {
     for(int i=0; i<traj_size; i++){
         liste[i]=init_V2(0.0,0.0);
     }
-    Pile* traj=malloc(sizeof(Pile));
+    File* traj=malloc(sizeof(File));
     traj->values=liste;
     traj->filled=0; 
 
