@@ -36,11 +36,11 @@ int main(void) {
 
     /* ---- Simulation ---- */
     float body_length = 8.0*H/900;
-    float curvature = 0.23/body_length; // angle max pour lequel le poisson peut tourner
+    float curvature = 0.10/body_length; // angle max pour lequel le poisson peut tourner
     float r_repulsion = 1.2f  * body_length;
     float r_alignment  = 10.0f * body_length;
     float r_attraction = 20.0f * body_length;
-    float fov=120.0*(M_PI/180);
+    float fov=90.0*(M_PI/180);
     int traj_size=7;
 
     bool space=false; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
@@ -50,10 +50,7 @@ int main(void) {
     int nb_fish= 200;
 
 
-    Simulation sim = init_simulation(nb_fish, W, H, velocity, body_length, fov,traj_size,space);
-    sim.r_repulsion  = r_repulsion;
-    sim.r_alignment  = r_alignment;
-    sim.r_attraction = r_attraction;
+    Simulation sim = init_simulation(r_repulsion, r_alignment, r_attraction, nb_fish, W, H, velocity, body_length, fov,traj_size,space);
 
     bool is_alone = false;
     bool is_together = false;
@@ -122,10 +119,23 @@ int main(void) {
         }
     
 
+        Simulation temp_sim =init_simulation(r_repulsion, r_alignment, r_attraction, nb_fish, W, H, velocity, body_length, fov,traj_size,space);
+        for (int i = 0; i < temp_sim.fish_count; ++i){
+            temp_sim.population[i].VecPosition=sim.population[i].VecPosition;
+            temp_sim.population[i].VecVitesse=sim.population[i].VecVitesse;
+            temp_sim.population[i].traj=sim.population[i].traj;
+        }
 
         for (int i = 0; i < sim.fish_count; ++i) {
-            update_fish(i, &sim, curvature);
+            update_fish(i, &sim, &temp_sim, curvature);
         }
+
+        for (int i = 0; i < temp_sim.fish_count; ++i){
+            sim.population[i].VecPosition=temp_sim.population[i].VecPosition;
+            sim.population[i].VecVitesse=temp_sim.population[i].VecVitesse;
+            sim.population[i].traj=temp_sim.population[i].traj;
+        }
+
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);
         SDL_RenderClear(renderer);
