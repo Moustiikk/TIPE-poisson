@@ -40,11 +40,29 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo ===== Edition des liens =====
+echo ===== Compilation de init_calculation.c =====
+gcc -c "init_calculation.c" %CFLAGS% -o "%BUILD_DIR%\init_calculation.o"
+if errorlevel 1 (
+    echo.
+    echo [ERREUR] Echec de la compilation de init_calculation.c
+    pause
+    exit /b 1
+)
+
+echo ===== Edition des liens pour main.exe =====
 gcc "%BUILD_DIR%\main.o" %OBJS% %LDFLAGS% -o "fish_sim.exe"
 if errorlevel 1 (
     echo.
-    echo [ERREUR] Echec de l’édition des liens
+    echo [ERREUR] Echec de l'edition des liens pour fish_sim.exe
+    pause
+    exit /b 1
+)
+
+echo ===== Edition des liens pour init_calculation.exe =====
+gcc "%BUILD_DIR%\init_calculation.o" %OBJS% %LDFLAGS% -o "init_calculation.exe"
+if errorlevel 1 (
+    echo.
+    echo [ERREUR] Echec de l'edition des liens pour init_calculation.exe
     pause
     exit /b 1
 )
@@ -52,14 +70,7 @@ if errorlevel 1 (
 REM === Copie de la bonne DLL officielle ===
 copy /Y "%SDL_PATH%\bin\SDL3.dll" . >nul
 
-REM === Facultatif: runtimes MinGW si ton exe plante sans eux ===
-REM set MSYS2=C:\msys64
-REM copy /Y "%MSYS2%\mingw64\bin\libgcc_s_seh-1.dll" . >nul
-REM copy /Y "%MSYS2%\mingw64\bin\libstdc++-6.dll" . >nul
-REM copy /Y "%MSYS2%\mingw64\bin\libwinpthread-1.dll" . >nul
-
 echo.
-echo [OK] Compilation et linkage terminés !
+echo [OK] Compilation et linkage termines.
 echo.
-REM pause
 exit /b 0

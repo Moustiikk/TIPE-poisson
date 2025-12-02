@@ -17,7 +17,7 @@ int main(void) {
         return 1;
     }
 
-    const int W = 1800, H = 1800;
+    const int W = 1750, H = 1750;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -38,7 +38,7 @@ int main(void) {
     float body_length = 8.0*H/900;
     float curvature = 0.10/body_length; // angle max pour lequel le poisson peut tourner
     float r_repulsion = 1.2f  * body_length;
-    float r_alignment  = 10.0f * body_length;
+    float r_alignment  = 12.0f * body_length;
     float r_attraction = 20.0f * body_length;
     float fov=90.0*(M_PI/180);
     int traj_size=7;
@@ -135,7 +135,7 @@ int main(void) {
             sim.population[i].VecVitesse=temp_sim.population[i].VecVitesse;
             sim.population[i].traj=temp_sim.population[i].traj;
         }
-
+        
 
         SDL_SetRenderDrawColor(renderer, 10, 12, 30, 255);
         SDL_RenderClear(renderer);
@@ -167,6 +167,7 @@ int main(void) {
         else{
             SDL_Delay(16);
         }
+       
         
     }
 

@@ -126,10 +126,10 @@ Vec2 attraction(const Fish* f, const Fish* population, int fish_count,float r_al
     for (int i = 0; i < n_Attraction; i++){
         Vec2 diff = subs_V2(neighbour_Attraction[i].VecPosition, f->VecPosition);
         float d = norm_V2(&diff);
-        attraction_vector = add_V2(attraction_vector, divide_V2(diff, d));
+        attraction_vector = add_V2(attraction_vector,normalize_V2(diff));
     }
     free(neighbour_Attraction);
-    return attraction_vector;
+    return normalize_V2(attraction_vector);
 }
 
 Vec2 direction_vec (Fish* f, const Fish* population, int fish_count,
@@ -165,7 +165,7 @@ float turning_angle (Vec2 D,Vec2 V,float curvature, float speed){
     else if (V.x*D.y - D.x*V.y < 0.0f){
         sign =-1;
     }
-    else{ sign=0;}
+    else{ sign=1;}
 
     float delta_phi_eff = sign*fminf(delta_phi, phi_max);
     return delta_phi_eff;
@@ -188,67 +188,72 @@ Vec2 reflect(Vec2 v, Vec2 normale) {
     return r;
 }
 
-static float soft_gain(float d, float dmax) {
-    if (d >= dmax) return 0.0f;
-    float x = 1.0f - d / dmax;   // 0 à dmax -> 1 à 0
-    return x * x;                // gain croît quand on s’approche du mur
-}
-static void wall_soft_repulsion(Vec2* position, Vec2* vitesse,
-                                int W, int H,
-                                float dmax, float k)
+void wall_avoid(Vec2* position, Vec2* vitesse,
+                       float W, float H, float speed)
 {
-    float dxL = position->x;              // distance au mur gauche
-    float dxR = (float)W - position->x;   // droite
-    float dyB = position->y;              // bas
-    float dyT = (float)H - position->y;   // haut
+    // On anticipe plus loin = tourne plus tôt
+    float look = speed * 1.2f;    // IMPORTANT ! (avant 0.6f → trop tard)
+    float turn = 0.20f;           // steering doux et réaliste
 
-    Vec2 steer = (Vec2){0.0f, 0.0f};
+    // On regarde plus loin dans la direction du poisson
+    Vec2 future = {
+        position->x + vitesse->x * look,
+        position->y + vitesse->y * look
+    };
 
-    if (dxL < dmax) {
-        steer = add_V2(steer, mult_V2((Vec2){+1.0f, 0.0f}, k * soft_gain(dxL, dmax)));
-    }
-    if (dxR < dmax) {
-        steer = add_V2(steer, mult_V2((Vec2){-1.0f, 0.0f}, k * soft_gain(dxR, dmax)));
-    }
-    if (dyB < dmax) {
-        steer = add_V2(steer, mult_V2((Vec2){0.0f, +1.0f}, k * soft_gain(dyB, dmax)));
-    }
-    if (dyT < dmax) {
-        steer = add_V2(steer, mult_V2((Vec2){0.0f, -1.0f}, k * soft_gain(dyT, dmax)));
-    }
+    Vec2 steer = {0, 0};
 
-    if (steer.x != 0.0f || steer.y != 0.0f) {
-        Vec2 v_new = add_V2(*vitesse, steer);
-        *vitesse = normalize_V2(v_new);
-    }
+    float margin = 60.0f;  // distance du mur où on commence à tourner
+
+    // Activation EARLY avant le mur
+    if (future.x < margin)     steer.x += turn;
+    else if (future.x > W-margin) steer.x -= turn;
+
+    if (future.y < margin)     steer.y += turn;
+    else if (future.y > H-margin) steer.y -= turn;
+
+    if (steer.x == 0 && steer.y == 0)
+        return;
+
+    // Steering tangent (éviter frontale directe)
+    Vec2 tangent = (Vec2){ -vitesse->y, vitesse->x };
+    steer = add_V2(steer, mult_V2(tangent, 0.05f));
+
+    // Mise à jour direction (vitesse constante)
+    Vec2 new_dir = add_V2(*vitesse, steer);
+    *vitesse = normalize_V2(new_dir);
 }
 
 
-void bounded_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
 
-     wall_soft_repulsion(position, vitesse, screen_long, screen_haut,
-                        /* dmax */ 30.0f, /* k */ 0.5f);
+
+
+void bounded_repositioning(Vec2* position, Vec2* vitesse,
+                            int screen_long, int screen_haut,float speed)
+{
+    // 1) Éviter le mur AVANT la mise à jour de la position
+    wall_avoid(position, vitesse,(float)screen_long, (float)screen_haut,speed);
+
+    // 2) Correction si, malgré tout, on dépasse (sécurité)
     if (position->x < 0.0f) {
         position->x = 2.0f;
-        *vitesse = reflect(*vitesse, (Vec2){1.0f, 0.0f}); 
+        *vitesse = reflect(*vitesse, (Vec2){1.0f, 0.0f});
     }
-
     else if (position->x > screen_long) {
-        position->x = (float)screen_long-2.0;
-        *vitesse = reflect(*vitesse, (Vec2){-1.0f, 0.0f}); 
+        position->x = screen_long - 2.0f;
+        *vitesse = reflect(*vitesse, (Vec2){-1.0f, 0.0f});
     }
 
-  
     if (position->y < 0.0f) {
         position->y = 2.0f;
-        *vitesse = reflect(*vitesse, (Vec2){0.0f, 1.0f}); 
+        *vitesse = reflect(*vitesse, (Vec2){0.0f, 1.0f});
     }
-    
     else if (position->y > screen_haut) {
-        position->y = (float)screen_haut-2;
-        *vitesse = reflect(*vitesse, (Vec2){0.0f, -1.0f}); 
+        position->y = screen_haut - 2.0f;
+        *vitesse = reflect(*vitesse, (Vec2){0.0f, -1.0f});
     }
 }
+
 
 
 void continious_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
@@ -286,7 +291,7 @@ void update_fish(int i, Simulation* r_sim, Simulation* w_sim, float curvature){
         continious_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut);
     }
     else {
-        bounded_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut);
+        bounded_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut,r_sim->speed);
     }
 
     if (f->traj->filled<r_sim->traj_size){
@@ -300,3 +305,4 @@ void update_fish(int i, Simulation* r_sim, Simulation* w_sim, float curvature){
         f->traj->values[r_sim->traj_size-1]=f->VecPosition;
     }
 }
+
