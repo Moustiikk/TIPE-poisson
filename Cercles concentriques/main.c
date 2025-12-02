@@ -12,12 +12,49 @@
 #include "dependencies/fishCON.h"
 
 int main(void) {
+    int W;
+    int H;
+    float curvature;
+    float r_repulsion;
+    float r_alignment;
+    float r_attraction;
+    float fov;
+    bool space;
+    int nb_fish;
+
+    FILE *f = fopen("config.txt", "r");
+    if (!f) {
+        printf("Erreur ouverture fichier.\n");
+        return 1;
+    }
+    fscanf(f, "%d", &W);
+    fscanf(f, "%d", &H);
+    fscanf(f, "%d", &nb_fish);
+    fscanf(f, "%f", &r_repulsion);
+    fscanf(f, "%f", &r_alignment);
+    fscanf(f, "%f", &r_attraction);
+    fscanf(f, "%f", &curvature);
+    fscanf(f, "%f", &fov);
+    fscanf(f, "%d", &space);
+    fclose(f);
+
+
+    float body_length = 8.0*H/900;
+    curvature = curvature/body_length;
+    r_repulsion = r_repulsion  * body_length;
+    r_alignment  = r_alignment * body_length;
+    r_attraction = r_attraction * body_length;
+    fov=fov*(M_PI/180);
+
+    int traj_size=7;
+
+    float velocity= 25.0f*body_length*(16.0f/1000.0f);
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    const int W = 1750, H = 1750;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -33,21 +70,6 @@ int main(void) {
         SDL_Quit();
         return 1;
     }
-
-    /* ---- Simulation ---- */
-    float body_length = 8.0*H/900;
-    float curvature = 0.10/body_length; // angle max pour lequel le poisson peut tourner
-    float r_repulsion = 1.2f  * body_length;
-    float r_alignment  = 12.0f * body_length;
-    float r_attraction = 20.0f * body_length;
-    float fov=90.0*(M_PI/180);
-    int traj_size=7;
-
-    bool space=false; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
-
-    float velocity= 25.0*body_length*(16.0/1000.0);
-
-    int nb_fish= 200;
 
 
     Simulation sim = init_simulation(r_repulsion, r_alignment, r_attraction, nb_fish, W, H, velocity, body_length, fov,traj_size,space);
@@ -117,23 +139,10 @@ int main(void) {
             }
                 
         }
-    
-
-        Simulation temp_sim =init_simulation(r_repulsion, r_alignment, r_attraction, nb_fish, W, H, velocity, body_length, fov,traj_size,space);
-        for (int i = 0; i < temp_sim.fish_count; ++i){
-            temp_sim.population[i].VecPosition=sim.population[i].VecPosition;
-            temp_sim.population[i].VecVitesse=sim.population[i].VecVitesse;
-            temp_sim.population[i].traj=sim.population[i].traj;
-        }
+        
 
         for (int i = 0; i < sim.fish_count; ++i) {
-            update_fish(i, &sim, &temp_sim, curvature);
-        }
-
-        for (int i = 0; i < temp_sim.fish_count; ++i){
-            sim.population[i].VecPosition=temp_sim.population[i].VecPosition;
-            sim.population[i].VecVitesse=temp_sim.population[i].VecVitesse;
-            sim.population[i].traj=temp_sim.population[i].traj;
+            update_fish(i, &sim, &sim, curvature);
         }
         
 

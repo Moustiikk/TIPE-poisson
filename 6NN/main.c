@@ -12,12 +12,46 @@
 #include "dependencies/fish6NN.h"
 
 int main(void) {
+    
+
+    /* ---- Simulation ---- */
+    int W;
+    int H;
+    float curvature;
+    float r_visu;
+    float fov;
+    bool space;
+    int nb_fish;
+
+    FILE *f = fopen("config.txt", "r");
+    if (!f) {
+        printf("Erreur ouverture fichier.\n");
+        return 1;
+    }
+    fscanf(f, "%d", &W);
+    fscanf(f, "%d", &H);
+    fscanf(f, "%d", &nb_fish);
+    fscanf(f, "%f", &r_visu);
+    fscanf(f, "%f", &curvature);
+    fscanf(f, "%f", &fov);
+    fscanf(f, "%d", &space);
+    fclose(f);
+
+
+    float body_length = 8.0*H/900;
+    curvature = curvature/body_length;
+    r_visu = r_visu  * body_length;
+    fov=fov*(M_PI/180);
+
+    int traj_size=7;
+
+    float velocity= 25.0f*body_length*(16.0f/1000.0f);
+
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
-
-    const int W = 1800, H = 1800;
 
     SDL_Window* window = SDL_CreateWindow("Banc de poissons (SDL3)", W, H, 0);
     if (!window) {
@@ -33,19 +67,6 @@ int main(void) {
         SDL_Quit();
         return 1;
     }
-
-    /* ---- Simulation ---- */
-    float body_length = 8.0*H/900;
-    float curvature = 0.10/body_length; // angle max pour lequel le poisson peut tourner
-    float r_visu = 20.0f * body_length;
-    float fov=90.0*(M_PI/180);
-    int traj_size=7;
-
-    bool space=false; //true - > l'espace est continu (périodique) false - > l'espace est férmé rebond
-
-    float velocity= 25.0*body_length*(16.0/1000.0);
-
-    int nb_fish= 200;
 
 
     Simulation sim = init_simulation(r_visu, nb_fish, W, H, velocity, body_length, fov,traj_size,space);
