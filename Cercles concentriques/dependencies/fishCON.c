@@ -305,4 +305,3 @@ void update_fish(int i, Simulation* r_sim, Simulation* w_sim, float curvature){
         f->traj->values[r_sim->traj_size-1]=f->VecPosition;
     }
 }
-
