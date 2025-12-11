@@ -191,7 +191,7 @@ int main (void){
         fclose(save);
 
         destroy_simulation(&sim);
-        printf("\rSimulation %d/%d terminee.                           \n", nmb_runned+1, nmb_simulations);
+        printf("\rSimulation %d/%d terminee.                                     \n", nmb_runned+1, nmb_simulations);
         fflush(stdout);
     }
 
