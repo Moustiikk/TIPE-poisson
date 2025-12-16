@@ -43,7 +43,7 @@ Simulation init_simulation(float r_repulsion,float r_alignment, float r_attracti
     return sim;
 }
 
-Simulation init_simulation_w_positions(Vec2** positions, float r_repulsion,float r_alignment, float r_attraction, int fish_count, int screen_long, int screen_haut, float speed, float body_length, float fov,int traj_size,bool space) {
+Simulation init_simulation_w_positions(Vec2* positions, float r_repulsion,float r_alignment, float r_attraction, int fish_count, int screen_long, int screen_haut, float speed, float body_length, float fov,int traj_size,bool space) {
     Simulation sim;
     sim.r_repulsion=r_repulsion;
     sim.r_attraction=r_attraction;
@@ -212,11 +212,10 @@ Vec2 reflect(Vec2 v, Vec2 normale) {
 }
 
 void wall_avoid(Vec2* position, Vec2* vitesse,
-                       float W, float H, float speed)
-{
+                       float W, float H, float speed){
     // On anticipe plus loin = tourne plus tôt
     float look = speed * 1.2f;    // IMPORTANT ! (avant 0.6f → trop tard)
-    float turn = 0.20f;           // steering doux et réaliste
+    float turn = 0.10f;           // steering doux et réaliste
 
     // On regarde plus loin dans la direction du poisson
     Vec2 future = {
@@ -226,7 +225,7 @@ void wall_avoid(Vec2* position, Vec2* vitesse,
 
     Vec2 steer = {0, 0};
 
-    float margin = 60.0f;  // distance du mur où on commence à tourner
+    float margin = 40.0f;  // distance du mur où on commence à tourner
 
     // Activation EARLY avant le mur
     if (future.x < margin)     steer.x += turn;
@@ -251,13 +250,11 @@ void wall_avoid(Vec2* position, Vec2* vitesse,
 
 
 
-void bounded_repositioning(Vec2* position, Vec2* vitesse,
-                            int screen_long, int screen_haut,float speed)
-{
-    // 1) Éviter le mur AVANT la mise à jour de la position
+void bounded_repositioning(Vec2* position, Vec2* vitesse,int screen_long, int screen_haut,float speed){
+
     wall_avoid(position, vitesse,(float)screen_long, (float)screen_haut,speed);
 
-    // 2) Correction si, malgré tout, on dépasse (sécurité)
+
     if (position->x < 0.0f) {
         position->x = 2.0f;
         *vitesse = reflect(*vitesse, (Vec2){1.0f, 0.0f});
@@ -299,25 +296,24 @@ Vec2 add_noise(Vec2 V, float curvature, float speed) {
 
 void continious_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
 
-    // Si le poisson sort par la droite, il réapparaît à gauche
     if (position->x > screen_long) {
         position->x -= screen_long;
     }
-    // S’il sort par la gauche, il réapparaît à droite
+
     else if (position->x < 0.0f) {
         position->x += screen_long;
     }
 
-    // Si le poisson sort par le bas, il réapparaît en haut
+
     if (position->y > screen_haut) {
         position->y -= screen_haut;
     }
-    // S’il sort par le haut, il réapparaît en bas
+    
     else if (position->y < 0.0f) {
         position->y += screen_haut;
     }
 
-    // Aucun changement de direction : vitesse inchangée
+
 }
 
 
@@ -325,51 +321,31 @@ void update_fish(int i, Simulation* r_sim, Simulation* w_sim, float curvature){
     Fish* f = &w_sim->population[i];
     float v = r_sim->speed;
 
-    // 1) Direction désirée (repulsion / alignment / attraction)
-    Vec2 D = direction_vec(
-        f,
-        r_sim->population,
-        r_sim->fish_count,
-        r_sim->r_repulsion,
-        r_sim->r_alignment,
-        r_sim->r_attraction,
-        r_sim->fov
-    );
+  
+    Vec2 D = direction_vec(f, r_sim->population, r_sim->fish_count, r_sim->r_repulsion, r_sim->r_alignment, r_sim->r_attraction, r_sim->fov);
 
-    // 2) Rotation déterministe (courbure max)
+   
     Vec2 vitesse_tplus1 = update_vi(D, f->VecVitesse, curvature, v);
 
-    // 3) BRUIT SIMPLE (petite rotation aléatoire)
-    vitesse_tplus1 = add_noise(vitesse_tplus1, curvature, v);
+    
+    //vitesse_tplus1 = add_noise(vitesse_tplus1, curvature, v);
 
-    // 4) Mise à jour vitesse
+    
     f->VecVitesse = vitesse_tplus1;
 
-    // 5) Mise à jour position (comme AVANT)
-    f->VecPosition = add_V2(
-        f->VecPosition,
-        mult_V2(f->VecVitesse, v)
-    );
+    
+    f->VecPosition = add_V2(f->VecPosition,mult_V2(f->VecVitesse, v));
 
-    // 6) Gestion de l’espace
+    
     if (r_sim->space) {
-        continious_repositioning(
-            &f->VecPosition,
-            &f->VecVitesse,
-            r_sim->screen_long,
-            r_sim->screen_haut
-        );
-    } else {
-        bounded_repositioning(
-            &f->VecPosition,
-            &f->VecVitesse,
-            r_sim->screen_long,
-            r_sim->screen_haut,
-            v
-        );
+        continious_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut);
+    }
+    
+    else {
+        bounded_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut,v);
     }
 
-    // 7) Queue (inchangée)
+
     if (f->traj->filled < r_sim->traj_size) {
         f->traj->values[f->traj->filled++] = f->VecPosition;
     } else {

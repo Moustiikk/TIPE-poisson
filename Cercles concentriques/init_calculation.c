@@ -76,10 +76,26 @@ Vec2** get_random_positons(int nb_sim, int* populations, int screen_long, int sc
 }
 
 
+int* put_maxi_first (int* tab, int n){
+    int maxi=tab[0];
+    int index_maxi=0;
+    for (int i=1; i<n; i++){
+        if (tab[i]>maxi){
+            maxi=tab[i];
+            index_maxi=i;
+        }
+    }
+     int tmp=tab[0];
+    tab[0]=maxi;
+    tab[index_maxi]=tmp;
+    return tab;
+}
+
+
 
 
 void progress_bar(double fraction) {
-    int width = 50; 
+    int width = 70; 
     int filled = (int)(fraction * width);
     int percent = (int)(fraction * 100.0);
 
@@ -185,16 +201,18 @@ int main (void){
 
     float velocity= 25.0f*body_length*(16.0f/1000.0f);
 
-
+    int* populations;
     if (nb_fish==0){
-        int** populations = get_random_population(nmb_simulations, 200, 40);
+        populations = get_random_population(nmb_simulations, 200, 40);
     }
     else{
-        int* populations = malloc(nmb_simulations * sizeof(int));
+        populations = malloc(nmb_simulations * sizeof(int));
         for (int i=0; i<nmb_simulations; i++){
             populations[i] = nb_fish;
         }
     }
+
+    populations = put_maxi_first(populations, nmb_simulations);
 
     Vec2** positions = get_random_positons(nmb_simulations, populations, W, H);
 
@@ -205,9 +223,15 @@ int main (void){
     SimResult* results = malloc(nmb_simulations * sizeof(SimResult));
     assert(results!=NULL);
 
+    double* simulations_percentage= malloc(nmb_simulations * sizeof(double));
+    assert(simulations_percentage!=NULL);
+
+    for (int i=0; i<nmb_simulations; i++){
+        simulations_percentage[i]=0.0;
+    }
 
     time_t start_time = time(NULL);
-
+    printf("[DEBUG] debut simulations\nAvancement : \n");
     //DEBUT BOUCLE PARALLELE
     #pragma omp parallel for schedule(dynamic)
     for (int nmb_runned=0; nmb_runned<nmb_simulations; nmb_runned++){
@@ -215,21 +239,24 @@ int main (void){
         Vec2* positions_fish = positions[nmb_runned];
         
 
-        printf("[DEBUG] debut simulation %d\n", nmb_runned+1);
-        fflush(stdout);
-
         Simulation sim = init_simulation_w_positions(positions_fish, r_repulsion, r_alignment, r_attraction, nb_fish_sim, W, H, 
             velocity, body_length, fov, traj_size, space);
 
-        printf("[DEBUG] init_simulation OK\n");
-        fflush(stdout);
-
         
         int pas = duration_simulation * 1000/16;  
-
+        
         for (int t=0; t<pas; t++){
-            progress_bar((double)(t+1)/pas);
+            simulations_percentage[nmb_runned] = (double)(t+1)/pas;
             
+            if (omp_get_thread_num() == 0) {
+                double total_progress = 0.0;
+                for (int i = 0; i < nmb_simulations; i++) {
+                    total_progress += simulations_percentage[i];
+                }
+                total_progress /= nmb_simulations;
+                progress_bar(total_progress);
+            }
+
             for (int i = 0; i < sim.fish_count; ++i) {
                 update_fish(i, &sim, &sim, curvature);
             }   
@@ -246,7 +273,6 @@ int main (void){
 
 
         destroy_simulation(&sim);
-        printf("\rSimulation %d/%d terminee.                                     \n", nmb_runned+1, nmb_simulations);
         fflush(stdout);
     }
 
@@ -263,8 +289,14 @@ int main (void){
         fprintf(save, "%d,%d,%.6f,%.6f\n", i+1, results[i].population_size, results[i].polarization, results[i].rotation);
         fclose(save);
     }
+    free(results);
+    free(populations);
+    for (int i=0; i<nmb_simulations; i++){
+        free(positions[i]);
+    }
+    free(positions);
 
-    printf("\rToutes les simulations sont terminees en : %ds                           \n",total_time);
+    printf("\rToutes les simulations sont terminees en : %ds                                      \n",total_time);
     printf("Appuyez sur Entree pour quitter...\n");
 
 
