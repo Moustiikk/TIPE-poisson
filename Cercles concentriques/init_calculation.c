@@ -4,10 +4,19 @@
 #include <stdbool.h>
 #include <math.h>
 #include <SDL3/SDL.h>
+#include <assert.h>
+#include <omp.h>
 #include "time.h"
 
 #include "dependencies/vector.h"
 #include "dependencies/fishCON.h"
+
+typedef struct {
+    float polarization;
+    float rotation;
+    int   population_size;
+} SimResult;
+
 
 float global_polarization(Simulation* sim){
     Vec2 mean_v=init_V2(0.0f,0.0f);
@@ -41,6 +50,32 @@ float global_rotation(Simulation* sim){
 }
 
 
+int* get_random_population(int nb_sim, int max_fish, int min_fish){
+    int* populations = malloc(nb_sim * sizeof(int));
+    assert(populations!=NULL);
+    for (int i=0; i<nb_sim; i++){
+        populations[i] = min_fish + rand() % (max_fish - min_fish + 1);
+    }
+    return populations;
+}
+
+
+Vec2** get_random_positons(int nb_sim, int* populations, int screen_long, int screen_haut){
+    Vec2** positions = malloc(nb_sim * sizeof(Vec2*));
+    assert(positions!=NULL);
+    for (int i=0; i<nb_sim; i++){
+        positions[i] = malloc(populations[i] * sizeof(Vec2));
+        assert(positions[i]!=NULL);
+        for (int j=0; j<populations[i]; j++){
+            float x = ((float)rand() / RAND_MAX) * screen_long;
+            float y = ((float)rand() / RAND_MAX) * screen_haut;
+            positions[i][j] = init_V2(x, y);
+        }
+    }
+    return positions;
+}
+
+
 
 
 void progress_bar(double fraction) {
@@ -67,10 +102,13 @@ int main (void){
     int nmb_simulations;
     int duration_simulation;
     int num_file;
+    int nmb_cores;
     printf("Entrez le nombre de simulations à lancer : \n>>> ");
     scanf("%d", &nmb_simulations);
     printf("Entrez la duree de chaque simulations (en secondes): \n>>> ");
     scanf("%d", &duration_simulation);
+    printf("Entrez le nombre de coeurs a utiliser : \n>>> ");
+    scanf("%d", &nmb_cores);
     printf("Entrez le numéro du fichier de sauvegarde: \n>>> ");
     scanf("%d", &num_file);
 
@@ -124,15 +162,15 @@ int main (void){
         printf("Erreur d'écriture du fichier de configuration.\n");
         return 1;
     }
-    fprintf(config_save, "%d", &W);
-    fprintf(config_save, "%d", &H);
-    fprintf(config_save, "%d", &nb_fish);
-    fprintf(config_save, "%f", &r_repulsion);
-    fprintf(config_save, "%f", &r_alignment);
-    fprintf(config_save, "%f", &r_attraction);
-    fprintf(config_save, "%f", &curvature);
-    fprintf(config_save, "%f", &fov);
-    fprintf(config_save, "%d", &space);
+    fprintf(config_save, "%d", W);
+    fprintf(config_save, "%d", H);
+    fprintf(config_save, "%d", nb_fish);
+    fprintf(config_save, "%f", r_repulsion);
+    fprintf(config_save, "%f", r_alignment);
+    fprintf(config_save, "%f", r_attraction);
+    fprintf(config_save, "%f", curvature);
+    fprintf(config_save, "%f", fov);
+    fprintf(config_save, "%d", space);
     fclose(config_save);
 
 
@@ -147,23 +185,41 @@ int main (void){
 
     float velocity= 25.0f*body_length*(16.0f/1000.0f);
 
+
+    if (nb_fish==0){
+        int** populations = get_random_population(nmb_simulations, 200, 40);
+    }
+    else{
+        int* populations = malloc(nmb_simulations * sizeof(int));
+        for (int i=0; i<nmb_simulations; i++){
+            populations[i] = nb_fish;
+        }
+    }
+
+    Vec2** positions = get_random_positons(nmb_simulations, populations, W, H);
+
+
+
+    omp_set_num_threads(nmb_cores);
+
+    SimResult* results = malloc(nmb_simulations * sizeof(SimResult));
+    assert(results!=NULL);
+
+
     time_t start_time = time(NULL);
 
+    //DEBUT BOUCLE PARALLELE
+    #pragma omp parallel for schedule(dynamic)
     for (int nmb_runned=0; nmb_runned<nmb_simulations; nmb_runned++){
-        int nb_fish_sim;
-        if (nb_fish==0){
-            nb_fish_sim=40 + rand() % 161; // entre 40 et 161
-        }
-        else{
-            nb_fish_sim=nb_fish;
-        }
+        int nb_fish_sim= populations[nmb_runned];
+        Vec2* positions_fish = positions[nmb_runned];
+        
 
         printf("[DEBUG] debut simulation %d\n", nmb_runned+1);
         fflush(stdout);
 
-        Simulation sim = init_simulation(r_repulsion, r_alignment, r_attraction,
-                                         nb_fish_sim, W, H, velocity, body_length,
-                                         fov, traj_size, space);
+        Simulation sim = init_simulation_w_positions(positions_fish, r_repulsion, r_alignment, r_attraction, nb_fish_sim, W, H, 
+            velocity, body_length, fov, traj_size, space);
 
         printf("[DEBUG] init_simulation OK\n");
         fflush(stdout);
@@ -182,13 +238,12 @@ int main (void){
         float polarization=global_polarization(&sim);
         float rotation=global_rotation(&sim);
 
-        save=fopen(filenameResults, "a");
-        if (save == NULL) {
-            printf("Erreur d'écriture du fichier de sauvegarde.\n");
-            return 1;
-        }
-        fprintf(save, "%d,%d,%.6f,%.6f\n", nmb_runned+1, sim.fish_count, polarization, rotation);
-        fclose(save);
+        SimResult result;
+        result.polarization = polarization;
+        result.rotation = rotation;
+        result.population_size = sim.fish_count;
+        results[nmb_runned] = result;
+
 
         destroy_simulation(&sim);
         printf("\rSimulation %d/%d terminee.                                     \n", nmb_runned+1, nmb_simulations);
@@ -198,6 +253,17 @@ int main (void){
 
     time_t end_time = time(NULL);
     int total_time =end_time - start_time;
+
+    for (int i = 0; i < nmb_simulations; i++) {
+        save = fopen(filenameResults, "a");
+        if (save == NULL) {
+            printf("Erreur d'écriture du fichier de sauvegarde.\n");
+            return 1;
+        }
+        fprintf(save, "%d,%d,%.6f,%.6f\n", i+1, results[i].population_size, results[i].polarization, results[i].rotation);
+        fclose(save);
+    }
+
     printf("\rToutes les simulations sont terminees en : %ds                           \n",total_time);
     printf("Appuyez sur Entree pour quitter...\n");
 

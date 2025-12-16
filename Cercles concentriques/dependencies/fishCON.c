@@ -43,6 +43,29 @@ Simulation init_simulation(float r_repulsion,float r_alignment, float r_attracti
     return sim;
 }
 
+Simulation init_simulation_w_positions(Vec2** positions, float r_repulsion,float r_alignment, float r_attraction, int fish_count, int screen_long, int screen_haut, float speed, float body_length, float fov,int traj_size,bool space) {
+    Simulation sim;
+    sim.r_repulsion=r_repulsion;
+    sim.r_attraction=r_attraction;
+    sim.r_alignment=r_alignment;
+    
+    sim.fish_count = fish_count;
+    sim.screen_long = screen_long;
+    sim.screen_haut = screen_haut;
+    sim.body_length=body_length;
+    sim.speed = speed;
+    sim.fov=fov;
+    sim.traj_size=traj_size;
+    sim.space=space;
+    sim.population = malloc(fish_count * sizeof(Fish));
+    for (int i = 0; i < fish_count; i++) {
+        float x = positions[i].x;
+        float y = positions[i].y;
+        sim.population[i] = init_fish(x, y, traj_size);
+    }
+    return sim;
+}
+
 void destroy_simulation(Simulation* sim){
     for (int i = 0; i < sim->fish_count; i++) {
         if (sim->population[i].traj) {
@@ -114,7 +137,7 @@ Vec2 alignment(const Fish* f, const Fish* population, int fish_count, float r_re
     free(neighbours_Alignment);
     return normalize_V2(alignment_vector);
 }
-
+ 
 
 
 
@@ -255,6 +278,24 @@ void bounded_repositioning(Vec2* position, Vec2* vitesse,
 }
 
 
+Vec2 add_noise(Vec2 V, float curvature, float speed) {
+
+    // rotation max autorisée (comme dans ta fonction turning_angle)
+    float gamma_max = curvature * speed;
+
+    // bruit faible : ±10% de la rotation max
+    float noise_strength = 0.15f;
+    float gamma = ((float)rand() / RAND_MAX * 2.0f - 1.0f)
+                  * noise_strength * gamma_max;
+
+    Vec2 Vn = {
+        V.x * cosf(gamma) - V.y * sinf(gamma),
+        V.x * sinf(gamma) + V.y * cosf(gamma)
+    };
+
+    return normalize_V2(Vn);
+}
+
 
 void continious_repositioning(Vec2* position, Vec2* vitesse, int screen_long, int screen_haut) {
 
@@ -281,27 +322,59 @@ void continious_repositioning(Vec2* position, Vec2* vitesse, int screen_long, in
 
 
 void update_fish(int i, Simulation* r_sim, Simulation* w_sim, float curvature){
-    Fish* f=&w_sim->population[i];
-    Vec2 D=direction_vec(f, r_sim->population, r_sim->fish_count, r_sim->r_repulsion, r_sim->r_alignment, r_sim->r_attraction,r_sim->fov); // nouveau vecteur vitesse 
-    Vec2 vitesse_tplus1 = update_vi(D,f->VecVitesse, curvature, r_sim->speed); // vecteur vitesse t+1 max selon la curvature
+    Fish* f = &w_sim->population[i];
+    float v = r_sim->speed;
+
+    // 1) Direction désirée (repulsion / alignment / attraction)
+    Vec2 D = direction_vec(
+        f,
+        r_sim->population,
+        r_sim->fish_count,
+        r_sim->r_repulsion,
+        r_sim->r_alignment,
+        r_sim->r_attraction,
+        r_sim->fov
+    );
+
+    // 2) Rotation déterministe (courbure max)
+    Vec2 vitesse_tplus1 = update_vi(D, f->VecVitesse, curvature, v);
+
+    // 3) BRUIT SIMPLE (petite rotation aléatoire)
+    vitesse_tplus1 = add_noise(vitesse_tplus1, curvature, v);
+
+    // 4) Mise à jour vitesse
     f->VecVitesse = vitesse_tplus1;
-    f->VecPosition = add_V2(f->VecPosition, mult_V2(f->VecVitesse, r_sim->speed));
 
-    if (r_sim->space){
-        continious_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut);
-    }
-    else {
-        bounded_repositioning(&f->VecPosition, &f->VecVitesse, r_sim->screen_long, r_sim->screen_haut,r_sim->speed);
+    // 5) Mise à jour position (comme AVANT)
+    f->VecPosition = add_V2(
+        f->VecPosition,
+        mult_V2(f->VecVitesse, v)
+    );
+
+    // 6) Gestion de l’espace
+    if (r_sim->space) {
+        continious_repositioning(
+            &f->VecPosition,
+            &f->VecVitesse,
+            r_sim->screen_long,
+            r_sim->screen_haut
+        );
+    } else {
+        bounded_repositioning(
+            &f->VecPosition,
+            &f->VecVitesse,
+            r_sim->screen_long,
+            r_sim->screen_haut,
+            v
+        );
     }
 
-    if (f->traj->filled<r_sim->traj_size){
-        f->traj->values[f->traj->filled]=f->VecPosition;
-        f->traj->filled++;
-    }
-    else {
-        for (int i=0;i<r_sim->traj_size-1;i++){
-            f->traj->values[i]=f->traj->values[i+1];
-        }
-        f->traj->values[r_sim->traj_size-1]=f->VecPosition;
+    // 7) Queue (inchangée)
+    if (f->traj->filled < r_sim->traj_size) {
+        f->traj->values[f->traj->filled++] = f->VecPosition;
+    } else {
+        for (int j = 0; j < r_sim->traj_size - 1; j++)
+            f->traj->values[j] = f->traj->values[j + 1];
+        f->traj->values[r_sim->traj_size - 1] = f->VecPosition;
     }
 }

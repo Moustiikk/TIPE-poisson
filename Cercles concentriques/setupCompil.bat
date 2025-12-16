@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM === Se placer dans le dossier du .bat (important pour config.txt, etc.) ===
+cd /d "%~dp0"
+
 REM ================================================================
 REM === CONFIGURATION DU CHEMIN SDL3 (SDK officiel MinGW 64-bit) ===
 REM ================================================================
@@ -14,8 +17,11 @@ REM === Préparation du dossier de build ===
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
 REM === Options de compilation ===
-set CFLAGS=-Wall -Wextra -O2 -g -I"%DEPS_DIR%" -I"%SDL_PATH%\include"
-set LDFLAGS=-L"%SDL_PATH%\lib" -lSDL3
+REM OpenMP: -fopenmp
+REM Optimisations CPU: -O3 -march=native
+REM Debug: retire -g si tu veux juste perf
+set CFLAGS=-Wall -Wextra -O3 -march=native -fopenmp -g -I"%DEPS_DIR%" -I"%SDL_PATH%\include"
+set LDFLAGS=-L"%SDL_PATH%\lib" -lSDL3 -fopenmp
 
 echo ===== Compilation des fichiers de %DEPS_DIR% =====
 set OBJS=
@@ -49,7 +55,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo ===== Edition des liens pour main.exe =====
+echo ===== Edition des liens pour fish_sim.exe =====
 gcc "%BUILD_DIR%\main.o" %OBJS% %LDFLAGS% -o "fish_sim.exe"
 if errorlevel 1 (
     echo.
@@ -74,3 +80,4 @@ echo.
 echo [OK] Compilation et linkage termines.
 echo.
 exit /b 0
+
