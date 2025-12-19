@@ -279,7 +279,7 @@ int main (void){
 
     time_t end_time = time(NULL);
     int total_time =end_time - start_time;
-
+    progress_bar(1.0);
     for (int i = 0; i < nmb_simulations; i++) {
         save = fopen(filenameResults, "a");
         if (save == NULL) {
@@ -295,6 +295,7 @@ int main (void){
         free(positions[i]);
     }
     free(positions);
+    
 
     printf("\rToutes les simulations sont terminees en : %ds                                      \n",total_time);
     printf("Appuyez sur Entree pour quitter...\n");

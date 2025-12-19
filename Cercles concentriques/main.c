@@ -11,6 +11,37 @@
 #include "dependencies/vector.h"
 #include "dependencies/fishCON.h"
 
+float global_polarization(Simulation* sim){
+    Vec2 mean_v=init_V2(0.0f,0.0f);
+    for(int i=0;i<sim->fish_count;i++){
+        mean_v=add_V2(mean_v,normalize_V2(sim->population[i].VecVitesse));
+    }
+    mean_v=divide_V2(mean_v,sim->fish_count);
+    return norm_V2(&mean_v);
+}
+
+float global_rotation(Simulation* sim){
+    Vec2 barycentre=init_V2(0.0f,0.0f);
+    for(int i=0;i<sim->fish_count;i++){
+        barycentre=add_V2(barycentre,sim->population[i].VecPosition);
+    }
+    barycentre=divide_V2(barycentre,sim->fish_count);
+
+    float prod_mean=0.0f;
+    for(int i=0;i<sim->fish_count;i++){
+        Vec2 ri=subs_V2(sim->population[i].VecPosition,barycentre);
+        Vec2 vi=normalize_V2(sim->population[i].VecVitesse);
+        ri= normalize_V2(ri);
+        prod_mean += (ri.x*vi.y - ri.y*vi.x);
+    }
+    prod_mean=prod_mean/sim->fish_count;
+
+    if (prod_mean<0.0f){
+        prod_mean = -prod_mean;
+    }
+    return prod_mean;
+}
+
 int main(void) {
     int W;
     int H;
@@ -168,6 +199,40 @@ int main(void) {
                 SDL_RenderFillRect(renderer, &pos_traj);
             }
         }
+
+        float polarization=global_polarization(&sim);
+        float rotation=global_rotation(&sim);
+        bool is_swarming= false;
+        bool is_schooling= false;
+        bool is_milling= false;
+        if (polarization>0.75f){
+            is_schooling=true;
+        }
+        else if (rotation>0.6f && polarization<0.5f){
+            is_milling=true;
+        }
+        else if (rotation<=0.6f && polarization<0.5f){
+            is_swarming=true;
+        }
+        if (is_schooling){
+            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 80); // Vert
+        }
+        else if (is_milling){
+            SDL_SetRenderDrawColor(renderer, 0, 0, 255, 80); // Bleu
+        }
+        else if (is_swarming){
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 80); // Jaune
+        }
+        else{
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 80); // Rouge
+        }
+
+
+        SDL_FRect status_rect = {10.0f, 10.0f, 50.0f, 50.0f};
+        SDL_RenderFillRect(renderer, &status_rect);
+
+
+
 
         SDL_RenderPresent(renderer);
         if (is_skipping){
