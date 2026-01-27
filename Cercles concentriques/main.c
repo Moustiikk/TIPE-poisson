@@ -11,6 +11,49 @@
 #include "dependencies/vector.h"
 #include "dependencies/fishCON.h"
 
+
+ConnexityComp* get_main_comp(Simulation* sim, ConnexityResults* connexity_results){
+    int max_size=0;
+    int index_main_comp=0;
+    for (int i=0; i<connexity_results->connexity_count; i++){
+        if (connexity_results->connexity_comp[i]->comp_size>max_size){
+            max_size=connexity_results->connexity_comp[i]->comp_size;
+            index_main_comp=i;
+        }
+    }
+    return connexity_results->connexity_comp[index_main_comp];
+}
+
+float local_polarization(Simulation* sim, ConnexityComp* comp){
+    Vec2 mean_v=init_V2(0.0f,0.0f);
+    for(int i=0;i<comp->comp_size;i++){
+        mean_v=add_V2(mean_v,normalize_V2(comp->comp[i].VecVitesse));
+    }
+    mean_v=divide_V2(mean_v,comp->comp_size);
+    return norm_V2(&mean_v);
+}
+
+
+float local_rotation(Simulation* sim, ConnexityComp* comp){
+    Vec2 barycentre=init_V2(0.0f,0.0f);
+    for(int i=0;i<comp->comp_size;i++){
+        barycentre=add_V2(barycentre,comp->comp[i].VecPosition);
+    }
+    barycentre=divide_V2(barycentre,comp->comp_size);
+    float prod_mean=0.0f;
+    for(int i=0;i<comp->comp_size;i++){
+        Vec2 ri=subs_V2(comp->comp[i].VecPosition,barycentre);
+        Vec2 vi=normalize_V2(comp->comp[i].VecVitesse);
+        ri= normalize_V2(ri);
+        prod_mean += (ri.x*vi.y - ri.y*vi.x);
+    }
+    prod_mean=prod_mean/comp->comp_size;
+    if (prod_mean<0.0f){
+        prod_mean = -prod_mean;
+    }
+    return prod_mean;
+}
+
 float global_polarization(Simulation* sim){
     Vec2 mean_v=init_V2(0.0f,0.0f);
     for(int i=0;i<sim->fish_count;i++){
@@ -19,6 +62,7 @@ float global_polarization(Simulation* sim){
     mean_v=divide_V2(mean_v,sim->fish_count);
     return norm_V2(&mean_v);
 }
+
 
 float global_rotation(Simulation* sim){
     Vec2 barycentre=init_V2(0.0f,0.0f);
@@ -42,6 +86,7 @@ float global_rotation(Simulation* sim){
     return prod_mean;
 }
 
+
 int main(void) {
     int W;
     int H;
@@ -52,6 +97,7 @@ int main(void) {
     float fov;
     bool space;
     int nb_fish;
+    int tmpspace;
 
     FILE *f = fopen("config.txt", "r");
     if (!f) {
@@ -66,8 +112,10 @@ int main(void) {
     fscanf(f, "%f", &r_attraction);
     fscanf(f, "%f", &curvature);
     fscanf(f, "%f", &fov);
-    fscanf(f, "%d", &space);
+    fscanf(f, "%d", &tmpspace);
     fclose(f);
+
+    space = (tmpspace != 0);
 
 
     float body_length = 8.0*H/900;
@@ -110,6 +158,7 @@ int main(void) {
     bool is_skipping=false;
     bool running = true;
     bool is_paused=false;
+    bool draw_interactions=false;
 
     while (running) {
         SDL_Event evt;
@@ -133,12 +182,14 @@ int main(void) {
                     sim.r_repulsion = r_repulsion;
                     sim.r_alignment  = r_alignment;
                     sim.r_attraction = r_attraction;
+                    draw_interactions=true;
                 }
                 else if (evt.key.key == SDLK_A) {
                     is_alone = true;
                     sim.r_repulsion = 700.0+r_repulsion;
                     sim.r_alignment  = 700.0+r_alignment;
                     sim.r_attraction = 700.0+r_attraction;
+                    draw_interactions=false;
                 }
                 if (evt.key.key == SDLK_T && is_together) {
                     is_together = false;
@@ -166,6 +217,12 @@ int main(void) {
                             }
                         }
                     }
+                }
+                if (evt.key.key == SDLK_G && draw_interactions) {
+                    draw_interactions = false;
+                }
+                else if (evt.key.key == SDLK_G) {
+                    draw_interactions = true;
                 }
             }
                 
@@ -199,9 +256,23 @@ int main(void) {
                 SDL_RenderFillRect(renderer, &pos_traj);
             }
         }
+        
 
-        float polarization=global_polarization(&sim);
-        float rotation=global_rotation(&sim);
+        ConnexityResults connexity_results = get_connexity_comp(&sim);
+        ConnexityComp* main_comp = get_main_comp(&sim, &connexity_results);
+        float polarization;
+        float rotation ;
+
+        if (main_comp->comp_size>= 50) {
+            polarization = local_polarization(&sim, main_comp);
+            rotation = local_rotation(&sim, main_comp);
+        } 
+        else {
+            polarization = global_polarization(&sim);
+            rotation = global_rotation(&sim);
+        }
+
+
         bool is_swarming= false;
         bool is_schooling= false;
         bool is_milling= false;
@@ -227,14 +298,33 @@ int main(void) {
             SDL_SetRenderDrawColor(renderer, 255, 0, 0, 80); // Rouge
         }
 
-
-        SDL_FRect status_rect = {10.0f, 10.0f, 50.0f, 50.0f};
+        SDL_FRect status_rect = {10.0f, 10.0f, 25.0f, 25.0f};
         SDL_RenderFillRect(renderer, &status_rect);
 
+        if (draw_interactions) {
+            SDL_SetRenderDrawColor(renderer, 100, 100, 255, 50);
+            Graph* g = get_interaction_graph(&sim);
+
+            for (int i = 0; i < sim.fish_count; i++) {
+                for (int j = 0; j < sim.fish_count; j++) {
+                    if (g->g[i][j] == 1) {
+                        SDL_RenderLine(renderer,
+                            sim.population[i].VecPosition.x,
+                            sim.population[i].VecPosition.y,
+                            sim.population[j].VecPosition.x,
+                            sim.population[j].VecPosition.y
+                        );
+                    }
+                }
+            }
+
+            destroy_graph(g);
+        }
 
 
-
+        
         SDL_RenderPresent(renderer);
+
         if (is_skipping){
             SDL_Delay(0.0000);
         }
@@ -249,6 +339,7 @@ int main(void) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
+
     return 0;
 }
 

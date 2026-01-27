@@ -111,6 +111,162 @@ Fish* neighbours (int neighbour_count,const Fish * population,const Fish *f, int
 }
 
 
+Pile* init_pile(int size){
+    Pile* p = malloc (sizeof (Pile));
+    p->size = size;
+    p->filled = 0;
+    p->values = malloc (size * sizeof (int));
+    return p;
+}
+
+void destroy_pile (Pile* p){
+    free (p->values);
+    free (p);
+}
+
+void size_up_pile (Pile* p){
+    p->values = realloc (p->values, 2*p->size * sizeof (int));
+    p->size = p->size * 2;
+}
+
+void push (Pile* p, int value){
+    if (p->filled < p->size){
+        p->values[p->filled] = value;
+        p->filled++;
+    }
+    else{
+        size_up_pile (p);
+        p->values[p->filled] = value;
+        p->filled++;
+    }
+}
+
+int pop (Pile* p){
+    if (p->filled > 0){
+        p->filled--;
+        return p->values[p->filled];
+    }
+    else{
+        return -1;  
+    }
+}
+
+bool is_empty (Pile* p){
+    return (p->filled == 0);
+}
+
+
+Graph* init_graph (int fish_count){
+    Graph* g = malloc (sizeof (Graph));
+    g->fish_count = fish_count;
+    g->g = malloc (fish_count * sizeof (int*));
+    for (int i = 0; i < fish_count; i++) {
+        g->g[i] = malloc (fish_count * sizeof (int));
+        for (int j = 0; j < fish_count; j++) {
+            g->g[i][j] = 0;
+        }
+    }
+    return g;
+}
+
+void destroy_graph (Graph* g){
+    for (int i = 0; i < g->fish_count; i++) {
+        free(g->g[i]);
+    }
+    free(g->g);
+    free(g);
+}
+
+
+Graph* get_interaction_graph (Simulation* sim){
+    Graph* g = init_graph (sim->fish_count);
+    for (int i = 0; i < sim->fish_count; i++) {
+        for (int j = 0; j < sim->fish_count; j++) {
+            if (i != j) {
+                Vec2 rij = subs_V2(sim->population[j].VecPosition, sim->population[i].VecPosition);
+                float d = norm_V2(&rij);
+                float theta = angle_V2(sim->population[i].VecVitesse, normalize_V2(rij));
+                if (d <= sim->r_alignment && theta < sim->fov) {
+                    g->g[i][j] = 1;
+                    g->g[j][i] = 1;
+                }
+            }
+        }
+    }
+    return g;
+}
+
+void search(Simulation* sim, int start,Graph* g, bool* visited,Pile* search_pile){
+    
+    Pile* parc= init_pile (sim->fish_count);
+    push (parc, start);
+    push (search_pile, start);
+    visited[start] = true;
+    while (!is_empty (parc)){
+        int current = pop (parc);
+        for (int i = 0; i < sim->fish_count; i++) {
+            if (g->g[current][i] == 1 && !visited[i]) {
+                push (parc, i);
+                push (search_pile, i);
+                visited[i] = true;
+            }
+        }
+    }
+    destroy_pile (parc);
+
+}
+
+ConnexityResults get_connexity_comp(Simulation* sim){
+    Graph* g = get_interaction_graph (sim);
+    Pile** searches= malloc (sim->fish_count * sizeof (Pile*));
+    bool* visited = malloc (sim->fish_count * sizeof (bool));
+    int connexity_count = 0;
+    int done=0;
+    for (int i = 0; i < sim->fish_count; i++) {
+        visited[i] = false;
+    }
+    while (done < sim->fish_count){
+        int start = -1;
+        for (int i = 0; i < sim->fish_count; i++) {
+            if (!visited[i]) {
+                start = i;
+                break;
+            }
+        }
+
+        Pile* search_pile = init_pile (sim->fish_count);
+        search (sim, start, g, visited, search_pile);
+        searches[connexity_count] = search_pile;
+        connexity_count++;
+        done = 0;
+        for (int i = 0; i < sim->fish_count; i++) {
+            if (visited[i]) {
+                done++;
+            }
+        }
+    }
+    free (visited);
+    destroy_graph (g);
+    ConnexityComp** connexity_tab = malloc (connexity_count * sizeof (ConnexityComp*));
+    for (int i = 0; i < connexity_count; i++) {
+        connexity_tab[i] = malloc (sizeof (ConnexityComp));
+        connexity_tab[i]->comp_size = searches[i]->filled;
+        connexity_tab[i]->comp = malloc (searches[i]->filled * sizeof (Fish));
+        for (int j = 0; j < searches[i]->filled; j++) {
+            int fish_index = searches[i]->values[j];
+            connexity_tab[i]->comp[j] = sim->population[fish_index];
+        }
+        destroy_pile (searches[i]);
+    }
+    free (searches);
+    ConnexityResults results;
+    results.connexity_count = connexity_count;
+    results.connexity_comp = connexity_tab;
+    return results;
+    
+}
+
+
 Vec2 repulsion(const Fish* f, const Fish* population, int fish_count, float r_repulsion,float fov){
     int n_Repulsion = nb_fish_zone(population, f, fish_count, 0.0f, r_repulsion,fov);
     Fish * neighbour_rep = neighbours(n_Repulsion, population, f, fish_count, 0.0f, r_repulsion,fov);
